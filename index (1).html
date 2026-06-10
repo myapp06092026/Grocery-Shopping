@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#C75B39">
+<title>Meals & Groceries</title>
+<style>
+  :root{
+    --bg:#FBF6EE;--surface:#FFFFFF;--primary:#C75B39;--primary-dark:#A8472B;
+    --accent:#4E7C59;--accent-soft:#E8F0E6;--text:#3A322B;--muted:#9A8E7E;
+    --border:#ECE3D6;--danger:#C0453B;--shadow:0 6px 20px rgba(110,80,50,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;padding-bottom:88px;-webkit-font-smoothing:antialiased;}
+
+  header{position:sticky;top:0;z-index:50;background:var(--primary);color:#fff;padding:16px 18px 12px;box-shadow:0 2px 12px rgba(167,71,43,.25);}
+  header .top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  header h1{font-family:Georgia,serif;font-size:20px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px;}
+  .room-chip{background:rgba(255,255,255,.18);border:none;color:#fff;font-size:12px;padding:6px 11px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:#8fd19e;display:inline-block;}
+  .sync-dot.off{background:#f0c36d;}
+
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;}
+  .tab{flex:1;text-align:center;padding:12px 4px;font-size:14px;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;position:relative;transition:color .2s;}
+  .tab.active{color:var(--primary);}
+  .tab.active::after{content:"";position:absolute;left:15%;right:15%;bottom:0;height:3px;background:var(--primary);border-radius:3px 3px 0 0;}
+  .tab .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;font-size:10px;line-height:17px;background:var(--accent);color:#fff;border-radius:10px;}
+
+  main{padding:16px;max-width:680px;margin:0 auto;}
+  .view{display:none;animation:fade .25s ease;}.view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  .search-wrap{position:relative;margin-bottom:16px;}
+  .search-wrap input{width:100%;padding:13px 16px 13px 42px;font-size:15px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);box-shadow:var(--shadow);}
+  .search-wrap input:focus{outline:none;border-color:var(--primary);}
+  .search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);}
+
+  .dish{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;border:1px solid var(--border);}
+  .dish-head{display:flex;align-items:center;gap:12px;padding:12px;}
+  .dish-icon{width:46px;height:46px;border-radius:12px;flex-shrink:0;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .dish-info{flex:1;min-width:0;}
+  .dish-name{font-weight:700;font-size:16px;margin:0;}
+  .dish-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+  .dish-check{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:#fff;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;color:transparent;font-size:16px;}
+  .dish.added .dish-check{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .dish.added{border-color:var(--accent);}
+  .dish-detail{display:none;padding:0 12px 12px;border-top:1px dashed var(--border);}
+  .dish.open .dish-detail{display:block;animation:fade .2s;}
+  .ing-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+  .ing-tag{background:var(--accent-soft);color:var(--accent);font-size:13px;padding:4px 10px;border-radius:8px;}
+  .ing-tag .sec{font-size:11px;opacity:.7;margin-left:3px;}
+  .dish-actions{display:flex;gap:8px;}
+  .dish-actions button{flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text);}
+  .dish-actions .del{color:var(--danger);border-color:#f1d4d0;}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;}
+  .empty .big{font-size:42px;display:block;margin-bottom:8px;}
+
+  .shop-section{margin-bottom:20px;}
+  .shop-section-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .shop-section-head .emoji{font-size:18px;}
+  .shop-section-head h3{font-size:13px;color:var(--muted);font-weight:700;margin:0;text-transform:uppercase;letter-spacing:.5px;}
+  .shop-section-head .count{font-size:11px;background:var(--border);color:var(--muted);padding:2px 7px;border-radius:10px;}
+  .shop-item{display:flex;align-items:center;gap:12px;background:var(--surface);padding:12px 14px;border-radius:12px;margin-bottom:8px;box-shadow:var(--shadow);border:1px solid var(--border);cursor:pointer;transition:all .15s;}
+  .shop-item .box{width:24px;height:24px;border-radius:7px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;font-size:14px;transition:all .15px;}
+  .shop-item.done{opacity:.5;}
+  .shop-item.done .box{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .shop-item.done .item-name{text-decoration:line-through;color:var(--muted);}
+  .shop-item .item-name{flex:1;font-size:15px;}
+  .shop-item .item-dish{font-size:11px;color:var(--muted);}
+  .clear-bar{display:flex;gap:8px;margin-bottom:14px;}
+  .clear-bar button{flex:1;padding:11px;border-radius:12px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;box-shadow:var(--shadow);}
+
+  .section-item{display:flex;align-items:center;gap:12px;background:var(--surface);padding:13px 14px;border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);border:1px solid var(--border);}
+  .section-emoji{font-size:22px;width:36px;text-align:center;flex-shrink:0;}
+  .section-name{flex:1;font-size:15px;font-weight:600;}
+  .section-del{border:none;background:none;color:var(--danger);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:8px;}
+  .add-section-form{display:flex;gap:8px;margin-top:16px;}
+  .add-section-form input{flex:1;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:12px;background:var(--surface);}
+  .add-section-form input:focus{outline:none;border-color:var(--primary);}
+  .add-section-form button{padding:12px 18px;background:var(--primary);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;}
+  .emoji-pick{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px;}
+  .emoji-pick span{font-size:22px;cursor:pointer;padding:6px;border-radius:8px;border:2px solid transparent;}
+  .emoji-pick span.sel{border-color:var(--primary);background:var(--accent-soft);}
+
+  .fab{position:fixed;right:20px;bottom:24px;z-index:60;width:60px;height:60px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:30px;line-height:1;box-shadow:0 6px 18px rgba(167,71,43,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+  .fab:active{transform:scale(.92);}
+
+  .modal-back{position:fixed;inset:0;background:rgba(58,50,43,.5);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+  .modal-back.show{display:flex;}
+  .modal{background:var(--bg);width:100%;max-width:680px;border-radius:22px 22px 0 0;max-height:92vh;overflow-y:auto;padding:8px 18px 28px;animation:slideup .25s ease;}
+  @keyframes slideup{from{transform:translateY(100%);}to{transform:none;}}
+  .modal .grab{width:42px;height:5px;background:var(--border);border-radius:3px;margin:8px auto 14px;}
+  .modal h2{font-size:19px;margin:0 0 16px;font-family:Georgia,serif;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px;}
+  .field input[type=text],.field input[type=date]{width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);}
+  .field input:focus{outline:none;border-color:var(--primary);}
+
+  .ing-row{display:flex;gap:6px;margin-bottom:8px;align-items:center;}
+  .ing-row .ing-name{flex:1;padding:11px 14px;font-size:15px;border:1px solid var(--border);border-radius:12px;background:var(--surface);}
+  .ing-row .ing-sec{width:120px;padding:11px 8px;font-size:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);}
+  .ing-row .rm{width:38px;border:1px solid #f1d4d0;background:#fff;color:var(--danger);border-radius:12px;font-size:18px;cursor:pointer;flex-shrink:0;}
+  .add-ing{width:100%;padding:11px;border:1px dashed var(--primary);background:#fff;color:var(--primary);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;}
+  .save-btn{width:100%;padding:15px;background:var(--primary);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;margin-top:6px;box-shadow:0 4px 12px rgba(167,71,43,.3);}
+
+  .overlay{position:fixed;inset:0;background:var(--bg);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding:36px 22px;text-align:center;overflow-y:auto;}
+  .overlay.show{display:flex;}
+  .overlay .icon{font-size:46px;margin-bottom:12px;}
+  .overlay h2{font-family:Georgia,serif;font-size:21px;margin:0 0 8px;}
+  .overlay p{color:var(--muted);font-size:14px;max-width:440px;margin:0 0 18px;}
+  .overlay .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:20px;width:100%;max-width:420px;margin-bottom:14px;}
+  .overlay input.code-input{width:100%;padding:13px;font-size:18px;text-align:center;letter-spacing:3px;text-transform:uppercase;border:1px solid var(--border);border-radius:12px;margin-bottom:10px;}
+  .overlay button{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:none;margin-top:10px;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)!important;}
+  .divider{margin:16px 0;color:var(--muted);font-size:12px;}
+
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:11px 20px;border-radius:30px;font-size:14px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:90%;text-align:center;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <h1>🍳 Meals &amp; Groceries</h1>
+    <button class="room-chip" onclick="openRoomSetup()"><span class="sync-dot off" id="syncDot"></span><b id="roomLabel">Offline</b></button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" id="tab-dish" onclick="switchView('dish')">Meals</button>
+  <button class="tab"        id="tab-shop" onclick="switchView('shop')">Shopping<span class="badge" id="shopBadge" style="display:none">0</span></button>
+  <button class="tab"        id="tab-sec"  onclick="switchView('sec')">Sections</button>
+</div>
+
+<main>
+  <section class="view active" id="view-dish">
+    <div class="search-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+      <input type="text" id="search" placeholder="Search meals…" oninput="renderDishes()">
+    </div>
+    <div id="dishList"><div class="empty"><span class="big">⏳</span>Connecting…</div></div>
+  </section>
+
+  <section class="view" id="view-shop">
+    <div class="clear-bar">
+      <button onclick="clearChecked()">✓ Clear bought</button>
+      <button onclick="clearAll()">🗑 Clear all</button>
+    </div>
+    <div id="shopList"></div>
+  </section>
+
+  <section class="view" id="view-sec">
+    <div id="secList"></div>
+    <p style="font-size:13px;color:var(--muted);margin:4px 0 6px;">Pick an emoji, then type a name:</p>
+    <div class="emoji-pick" id="emojiPick"></div>
+    <div class="add-section-form">
+      <input type="text" id="newSecName" placeholder="e.g. Dairy" maxlength="30">
+      <button onclick="addSection()">Add</button>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab-meal" onclick="openModal()">＋</button>
+
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <div class="grab"></div>
+    <h2 id="modalTitle">Add a meal</h2>
+    <div class="field"><label>Date</label><input type="date" id="fDate"></div>
+    <div class="field"><label>Meal name</label><input type="text" id="fName" placeholder="e.g. Beef stew"></div>
+    <div class="field">
+      <label>Ingredients &amp; Sections</label>
+      <div id="ingList"></div>
+      <button class="add-ing" onclick="addIngRow()">＋ Add ingredient</button>
+    </div>
+    <button class="save-btn" onclick="saveDish()">Save</button>
+  </div>
+</div>
+
+<div class="overlay" id="roomOverlay">
+  <div class="icon">🤝</div>
+  <h2>Share with your partner</h2>
+  <p>Enter the same share code on both devices to sync in real time.</p>
+  <div class="card">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Join with a code</div>
+    <input type="text" class="code-input" id="joinCode" maxlength="8" placeholder="ABC123">
+    <button class="btn-primary" onclick="joinRoom()">Join this code</button>
+  </div>
+  <div class="divider">— or —</div>
+  <button class="btn-primary" style="max-width:420px;" onclick="createRoom()">＋ Create a new shared list</button>
+  <button class="btn-ghost" id="closeRoomBtn" style="max-width:420px;display:none;" onclick="closeRoomSetup()">Close</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+         collection, doc, setDoc, deleteDoc, getDocs, onSnapshot, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCK7bz593LWmr7k-MsSgvjR_T5zZJvm9RQ",
+  authDomain: "grocery-shopping-cc9b7.firebaseapp.com",
+  projectId: "grocery-shopping-cc9b7",
+  storageBucket: "grocery-shopping-cc9b7.firebasestorage.app",
+  messagingSenderId: "756976846282",
+  appId: "1:756976846282:web:443bb8280282334814bb33"
+};
+
+const DEFAULT_SECTIONS = [
+  {id:'sec-veg',   name:'Vegetables',    emoji:'🥦'},
+  {id:'sec-meat',  name:'Meat',          emoji:'🥩'},
+  {id:'sec-grain', name:'Rice & Noodles',emoji:'🍚'},
+  {id:'sec-dairy', name:'Dairy',         emoji:'🧀'},
+  {id:'sec-fruit', name:'Fruit',         emoji:'🍎'},
+  {id:'sec-other', name:'Other',         emoji:'🛒'},
+];
+const EMOJI_LIST = ['🥦','🥩','🍚','🧀','🍎','🐟','🥚','🧴','🍞','🧅','🍋','🥛','🌶️','🛒','🧂','🥫','🍫','🧃'];
+
+let db, auth, ready = false;
+let dishes = [], shopping = [], sections = [...DEFAULT_SECTIONS];
+let editingId = null;
+let roomId = localStorage.getItem('roomId') || '';
+let unsubDishes = null, unsubShop = null, unsubSecs = null;
+let pickedEmoji = '🛒';
+
+try {
+  const app = initializeApp(firebaseConfig);
+  db = initializeFirestore(app, {localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})});
+  auth = getAuth(app);
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => { if (!auth.currentUser) return signInAnonymously(auth); })
+    .catch(err => toast('Auth error: ' + err.code));
+  onAuthStateChanged(auth, user => {
+    if (user) { ready = true; if (roomId) startSync(roomId); else openRoomSetup(); }
+  });
+} catch(e) { toast('Init error: ' + e.message); }
+
+function startSync(id) {
+  roomId = id; localStorage.setItem('roomId', id);
+  setRoomLabel(id, false);
+  if (unsubDishes) unsubDishes();
+  if (unsubShop)   unsubShop();
+  if (unsubSecs)   unsubSecs();
+  unsubDishes = onSnapshot(collection(db,'rooms',id,'dishes'), snap => {
+    dishes = []; snap.forEach(d => dishes.push({id:d.id,...d.data()}));
+    setRoomLabel(id, true); renderDishes();
+  }, err => { setRoomLabel(id,false); toast('Sync error: '+err.code); });
+  unsubShop = onSnapshot(collection(db,'rooms',id,'shopping'), snap => {
+    shopping = []; snap.forEach(d => shopping.push({id:d.id,...d.data()}));
+    renderShop(); renderDishes(); updateBadge();
+  });
+  unsubSecs = onSnapshot(collection(db,'rooms',id,'sections'), snap => {
+    if (!snap.empty) {
+      sections = [];
+      snap.forEach(d => sections.push({id:d.id,...d.data()}));
+      sections.sort((a,b) => (a.order||0)-(b.order||0));
+    }
+    renderSecList(); renderDishes();
+  });
+}
+function setRoomLabel(id, online) {
+  document.getElementById('roomLabel').textContent = id;
+  document.getElementById('syncDot').classList.toggle('off', !online);
+}
+
+function openRoomSetup() {
+  document.getElementById('closeRoomBtn').style.display = roomId ? 'block' : 'none';
+  document.getElementById('joinCode').value = '';
+  document.getElementById('roomOverlay').classList.add('show');
+}
+function closeRoomSetup() { document.getElementById('roomOverlay').classList.remove('show'); }
+function createRoom() {
+  const code = genCode(); startSync(code); closeRoomSetup();
+  setTimeout(() => alert('Your share code:\n\n  ' + code + '\n\nShare this with your partner.'), 100);
+}
+function joinRoom() {
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (code.length < 4) { toast('Please enter a code'); return; }
+  startSync(code); closeRoomSetup(); toast('Joined "' + code + '"');
+}
+function genCode() {
+  const c='ABCDEFGHJKLMNPRSTUVWXYZ23456789'; let s='';
+  for(let i=0;i<6;i++) s+=c[Math.floor(Math.random()*c.length)]; return s;
+}
+
+function switchView(v) {
+  ['dish','shop','sec'].forEach(k => {
+    document.getElementById('view-'+k).classList.toggle('active', k===v);
+    document.getElementById('tab-'+k).classList.toggle('active', k===v);
+  });
+  document.getElementById('fab-meal').style.display = v==='dish' ? 'flex' : 'none';
+  if (v==='shop') renderShop();
+  if (v==='sec')  { renderSecList(); renderEmojiPick(); }
+}
+
+function getSec(id) { return sections.find(s=>s.id===id) || {name:'Other',emoji:'🛒'}; }
+
+function renderSecList() {
+  const el = document.getElementById('secList'); if (!el) return;
+  el.innerHTML = sections.map(s =>
+    `<div class="section-item">
+      <span class="section-emoji">${s.emoji}</span>
+      <span class="section-name">${esc(s.name)}</span>
+      <button class="section-del" onclick="deleteSection('${s.id}')">×</button>
+    </div>`
+  ).join('') || '<div class="empty"><span class="big">📂</span>No sections yet</div>';
+}
+function renderEmojiPick() {
+  document.getElementById('emojiPick').innerHTML = EMOJI_LIST.map(e =>
+    `<span class="${e===pickedEmoji?'sel':''}" onclick="pickEmoji('${e}')">${e}</span>`
+  ).join('');
+}
+function pickEmoji(e) { pickedEmoji = e; renderEmojiPick(); }
+
+async function addSection() {
+  const name = document.getElementById('newSecName').value.trim();
+  if (!name) { toast('Enter a section name'); return; }
+  if (!roomId) { toast('Not connected'); return; }
+
+  // Firestoreにまだ何も保存されていない場合、デフォルトセクションを先に全部書き込む
+  const batch = writeBatch(db);
+  const existingIds = sections.map(s => s.id);
+  // Firestoreが空ならデフォルトセクションを先に書き込む
+  try {
+    const snap = await getDocs(collection(db,'rooms',roomId,'sections'));
+    if (snap.empty) {
+      DEFAULT_SECTIONS.forEach((s,i) => {
+        batch.set(doc(db,'rooms',roomId,'sections',s.id), {...s, order:i});
+      });
+    }
+  } catch(e) { /* スキップ */ }
+
+  // 新しいセクションを追加
+  const id = 'sec-' + uid();
+  const s = {id, name, emoji: pickedEmoji, order: sections.length + DEFAULT_SECTIONS.length};
+  batch.set(doc(db,'rooms',roomId,'sections',id), s);
+  await batch.commit().catch(e=>toast('Save failed: '+e.code));
+
+  document.getElementById('newSecName').value = '';
+  toast('Section added');
+}
+async function deleteSection(id) {
+  if (!confirm('Delete this section?')) return;
+  if (roomId) {
+    // 先にローカルを更新して即時反映
+    sections = sections.filter(s=>s.id!==id);
+    renderSecList();
+    await deleteDoc(doc(db,'rooms',roomId,'sections',id)).catch(e=>toast('Delete failed: '+e.code));
+  } else {
+    sections = sections.filter(s=>s.id!==id); renderSecList();
+  }
+}
+
+function renderDishes() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const list = document.getElementById('dishList');
+  if (!ready) return;
+  const filtered = dishes.filter(d=>(d.name||'').toLowerCase().includes(q));
+  filtered.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty"><span class="big">🍽️</span>${dishes.length===0?'Tap + to add your first meal':'No matching meals'}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(d => {
+    const added = isAdded(d.id);
+    const ings = d.ingredients || [];
+    const tags = ings.map(i => {
+      const sec = getSec(i.sectionId);
+      return `<span class="ing-tag">${esc(i.name)}<span class="sec">${sec.emoji}</span></span>`;
+    }).join('');
+    const n = ings.length;
+    return `<div class="dish${added?' added':''}" id="dish-${d.id}">
+      <div class="dish-head">
+        <div class="dish-icon">🍲</div>
+        <div class="dish-info" onclick="toggleOpen('${d.id}')">
+          <p class="dish-name">${esc(d.name)}</p>
+          <p class="dish-meta">${esc(d.date||'')} · ${n} ingredient${n===1?'':'s'}</p>
+        </div>
+        <div class="dish-check" onclick="toggleAdd('${d.id}')">✓</div>
+      </div>
+      <div class="dish-detail">
+        <div class="ing-tags">${tags||'<span style="font-size:13px;color:var(--muted)">No ingredients yet</span>'}</div>
+        <div class="dish-actions">
+          <button onclick="editDish('${d.id}')">✏️ Edit</button>
+          <button class="del" onclick="deleteDish('${d.id}')">🗑 Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleOpen(id) { document.getElementById('dish-'+id)?.classList.toggle('open'); }
+
+function isAdded(dishId) { return shopping.some(s=>s.dishId===dishId); }
+async function toggleAdd(dishId) {
+  const d = dishes.find(x=>x.id===dishId); if(!d) return;
+  const batch = writeBatch(db);
+  if (isAdded(dishId)) {
+    shopping.filter(s=>s.dishId===dishId).forEach(s=>batch.delete(doc(db,'rooms',roomId,'shopping',s.id)));
+  } else {
+    (d.ingredients||[]).forEach(ing => {
+      const id = uid();
+      batch.set(doc(db,'rooms',roomId,'shopping',id), {
+        name: ing.name, sectionId: ing.sectionId||'sec-other',
+        dishId: d.id, dishName: d.name, done: false, createdAt: Date.now()
+      });
+    });
+    toast('Added ingredients for ' + d.name);
+  }
+  await batch.commit().catch(e=>toast('Save failed: '+e.code));
+}
+
+function renderShop() {
+  const list = document.getElementById('shopList');
+  if (!ready) return;
+  if (!shopping.length) {
+    list.innerHTML = '<div class="empty"><span class="big">🛒</span>Check a meal on the Meals tab<br>and its ingredients appear here</div>';
+    updateBadge(); return;
+  }
+  const groups = {};
+  shopping.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(s => {
+    const key = s.sectionId||'sec-other';
+    (groups[key]=groups[key]||[]).push(s);
+  });
+  let html = '';
+  const allSecs = [...sections];
+  if (!allSecs.find(s=>s.id==='sec-other')) allSecs.push({id:'sec-other',name:'Other',emoji:'🛒'});
+  allSecs.forEach(sec => {
+    const items = groups[sec.id]; if(!items) return;
+    const remaining = items.filter(i=>!i.done).length;
+    html += `<div class="shop-section">
+      <div class="shop-section-head">
+        <span class="emoji">${sec.emoji}</span>
+        <h3>${esc(sec.name)}</h3>
+        <span class="count">${remaining}/${items.length}</span>
+      </div>`;
+    items.forEach(s => {
+      html += `<div class="shop-item${s.done?' done':''}" onclick="toggleDone('${s.id}')">
+        <div class="box">✓</div>
+        <span class="item-name">${esc(s.name)}</span>
+        <span class="item-dish">· ${esc(s.dishName||'')}</span>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  list.innerHTML = html; updateBadge();
+}
+async function toggleDone(id) {
+  const s = shopping.find(x=>x.id===id); if(!s) return;
+  await setDoc(doc(db,'rooms',roomId,'shopping',id),{done:!s.done},{merge:true}).catch(e=>toast('Save failed: '+e.code));
+}
+async function clearChecked() {
+  const done = shopping.filter(s=>s.done); if(!done.length) return;
+  const batch = writeBatch(db); done.forEach(s=>batch.delete(doc(db,'rooms',roomId,'shopping',s.id)));
+  await batch.commit().catch(e=>toast('Save failed: '+e.code));
+}
+async function clearAll() {
+  if (!shopping.length||!confirm('Clear the entire shopping list?')) return;
+  const batch = writeBatch(db); shopping.forEach(s=>batch.delete(doc(db,'rooms',roomId,'shopping',s.id)));
+  await batch.commit().catch(e=>toast('Save failed: '+e.code));
+}
+function updateBadge() {
+  const n = shopping.filter(s=>!s.done).length;
+  const b = document.getElementById('shopBadge');
+  if(n>0){b.style.display='inline-block';b.textContent=n;}else b.style.display='none';
+}
+
+function openModal() {
+  if (!roomId) { openRoomSetup(); return; }
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add a meal';
+  document.getElementById('fDate').value = today();
+  document.getElementById('fName').value = '';
+  document.getElementById('ingList').innerHTML = '';
+  addIngRow(); addIngRow();
+  document.getElementById('modalBack').classList.add('show');
+}
+function editDish(id) {
+  const d = dishes.find(x=>x.id===id); if(!d) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit meal';
+  document.getElementById('fDate').value = d.date||today();
+  document.getElementById('fName').value = d.name;
+  document.getElementById('ingList').innerHTML = '';
+  (d.ingredients?.length ? d.ingredients : [{}]).forEach(i=>addIngRow(i));
+  document.getElementById('modalBack').classList.add('show');
+}
+function closeModal() { document.getElementById('modalBack').classList.remove('show'); }
+document.getElementById('modalBack').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+function addIngRow(ing={}) {
+  const row = document.createElement('div'); row.className='ing-row';
+  const opts = sections.map(s =>
+    `<option value="${s.id}"${ing.sectionId===s.id?' selected':''}>${s.emoji} ${esc(s.name)}</option>`
+  ).join('');
+  row.innerHTML = `<input class="ing-name" type="text" placeholder="Ingredient" value="${ing.name?esc(ing.name):''}">
+    <select class="ing-sec">${opts}</select>
+    <button class="rm" onclick="this.parentNode.remove()">×</button>`;
+  document.getElementById('ingList').appendChild(row);
+}
+
+async function saveDish() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { toast('Please enter a meal name'); return; }
+  const ings = [];
+  document.querySelectorAll('#ingList .ing-row').forEach(row => {
+    const n = row.querySelector('.ing-name').value.trim();
+    const s = row.querySelector('.ing-sec').value;
+    if (n) ings.push({name:n, sectionId:s});
+  });
+  const date = document.getElementById('fDate').value||today();
+  const id = editingId||uid();
+  const wasEditing = editingId;
+  closeModal(); toast(wasEditing?'Updated':'Added');
+  try {
+    await setDoc(doc(db,'rooms',roomId,'dishes',id),{name,ingredients:ings,date,createdAt:Date.now()},{merge:true});
+    if (wasEditing) {
+      const batch = writeBatch(db);
+      shopping.filter(s=>s.dishId===wasEditing).forEach(s=>
+        batch.update(doc(db,'rooms',roomId,'shopping',s.id),{dishName:name}));
+      await batch.commit();
+    }
+  } catch(e) { toast('Save failed: '+e.code); }
+}
+async function deleteDish(id) {
+  const d = dishes.find(x=>x.id===id); if(!d) return;
+  if (!confirm(`Delete "${d.name}"?`)) return;
+  const batch = writeBatch(db);
+  batch.delete(doc(db,'rooms',roomId,'dishes',id));
+  shopping.filter(s=>s.dishId===id).forEach(s=>batch.delete(doc(db,'rooms',roomId,'shopping',s.id)));
+  await batch.commit().then(()=>toast('Deleted')).catch(e=>toast('Delete failed: '+e.code));
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function today(){const d=new Date(),m=('0'+(d.getMonth()+1)).slice(-2),dy=('0'+d.getDate()).slice(-2);return d.getFullYear()+'-'+m+'-'+dy;}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+let toastTimer;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600);}
+
+Object.assign(window,{
+  switchView,openModal,addIngRow,saveDish,
+  clearChecked,clearAll,toggleAdd,toggleOpen,editDish,deleteDish,toggleDone,
+  openRoomSetup,closeRoomSetup,createRoom,joinRoom,
+  addSection,deleteSection,pickEmoji
+});
+</script>
+</body>
+</html>
