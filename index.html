@@ -80,6 +80,13 @@
   .shop-item.done .item-name{text-decoration:line-through;color:var(--muted);}
   .shop-item .item-name{flex:1;font-size:15px;}
   .shop-item .item-dish{font-size:11px;color:var(--muted);}
+  .shop-item .price-wrap{display:flex;align-items:center;gap:4px;margin-left:8px;}
+  .shop-item .price-input{width:80px;padding:5px 8px;font-size:13px;border:1px solid var(--border);border-radius:8px;text-align:right;background:#fff;color:var(--text);}
+  .shop-item.done .price-input{background:var(--bg);}
+  .total-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;}
+  .total-bar .total-label{font-size:13px;color:var(--muted);font-weight:600;}
+  .total-bar .total-amount{font-size:22px;font-weight:800;color:var(--primary);font-family:Georgia,serif;}
+  .total-bar .total-sub{font-size:11px;color:var(--muted);text-align:right;}
   .clear-bar{display:flex;gap:8px;margin-bottom:14px;}
   .clear-bar button{flex:1;padding:11px;border-radius:12px;font-size:13px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;box-shadow:var(--shadow);}
 
@@ -162,13 +169,20 @@
       <button class="meal-tab"        id="mtab-breakfast" onclick="switchMealTab('breakfast')">🌅 Breakfast</button>
       <button class="meal-tab"        id="mtab-lunch"     onclick="switchMealTab('lunch')">☀️ Lunch</button>
       <button class="meal-tab"        id="mtab-dinner"    onclick="switchMealTab('dinner')">🌙 Dinner</button>
-      <button class="meal-tab"        id="mtab-other"     onclick="switchMealTab('other')">✨ Other</button>
+      <button class="meal-tab"        id="mtab-other"     onclick="switchMealTab('other')">🍿 Snacks</button>
     </div>
     <div id="dishList"><div class="empty"><span class="big">⏳</span>Connecting…</div></div>
   </section>
 
   <!-- Shopping -->
   <section class="view" id="view-shop">
+    <div class="total-bar">
+      <div>
+        <div class="total-label">Total spent</div>
+        <div class="total-sub" id="totalSub">0 items checked</div>
+      </div>
+      <div class="total-amount" id="totalAmount">$0.00</div>
+    </div>
     <div class="clear-bar">
       <button onclick="clearChecked()">✓ Clear bought</button>
       <button onclick="clearAll()">🗑 Clear all</button>
@@ -203,7 +217,7 @@
         <option value="breakfast">🌅 Breakfast</option>
         <option value="lunch">☀️ Lunch</option>
         <option value="dinner" selected>🌙 Dinner</option>
-        <option value="other">✨ Other</option>
+        <option value="other">🍿 Snacks</option>
       </select>
     </div>
     <div class="field">
@@ -255,14 +269,14 @@ const DEFAULT_SECTIONS = [
   {id:'sec-grain', name:'Rice & Noodles',emoji:'🍚'},
   {id:'sec-dairy', name:'Dairy',         emoji:'🧀'},
   {id:'sec-fruit', name:'Fruit',         emoji:'🍎'},
-  {id:'sec-other', name:'Other',         emoji:'🛒'},
+  {id:'sec-other', name:'Snacks',        emoji:'🍿'},
 ];
 const EMOJI_LIST = ['🥦','🥩','🍚','🧀','🍎','🐟','🥚','🧴','🍞','🧅','🍋','🥛','🌶️','🛒','🧂','🥫','🍫','🧃'];
 const MEAL_TYPES = {
   breakfast: {label:'Breakfast', emoji:'🌅'},
   lunch:     {label:'Lunch',     emoji:'☀️'},
   dinner:    {label:'Dinner',    emoji:'🌙'},
-  other:     {label:'Other',     emoji:'✨'},
+  other:     {label:'Snacks',    emoji:'🍿'},
 };
 
 let db, auth, ready = false;
@@ -354,7 +368,7 @@ function switchMealTab(tab) {
 }
 
 /* ── セクション管理 ── */
-function getSec(id) { return sections.find(s=>s.id===id) || {name:'Other',emoji:'🛒'}; }
+function getSec(id) { return sections.find(s=>s.id===id) || {name:'Snacks',emoji:'🍿'}; }
 
 function renderSecList() {
   const el = document.getElementById('secList'); if (!el) return;
@@ -494,19 +508,27 @@ function renderShop() {
         <span class="count">${remaining}/${items.length}</span>
       </div>`;
     items.forEach(s => {
-      html += `<div class="shop-item${s.done?' done':''}" onclick="toggleDone('${s.id}')">
-        <div class="box">✓</div>
-        <span class="item-name">${esc(s.name)}</span>
-        <span class="item-dish">· ${esc(s.dishName||'')}</span>
+      html += `<div class="shop-item${s.done?' done':''}" id="si-${s.id}">
+        <div class="box" onclick="toggleDone('${s.id}')">✓</div>
+        <span class="item-name" onclick="toggleDone('${s.id}')">${esc(s.name)}</span>
+        <span class="item-dish" onclick="toggleDone('${s.id}')">· ${esc(s.dishName||'')}</span>
+        <div class="price-wrap">
+          <input class="price-input" type="number" min="0" step="0.01" placeholder="$0"
+            value="${s.price||''}"
+            onclick="event.stopPropagation()"
+            onchange="savePrice('${s.id}',this.value)"
+            oninput="updateTotal()">
+        </div>
       </div>`;
     });
     html += '</div>';
   });
-  list.innerHTML = html; updateBadge();
+  list.innerHTML = html; updateBadge(); updateTotal();
 }
 async function toggleDone(id) {
   const s = shopping.find(x=>x.id===id); if(!s) return;
   await setDoc(doc(db,'rooms',roomId,'shopping',id),{done:!s.done},{merge:true}).catch(e=>toast('Save failed: '+e.code));
+  setTimeout(updateTotal, 100);
 }
 async function clearChecked() {
   const done = shopping.filter(s=>s.done); if(!done.length) return;
@@ -522,6 +544,25 @@ function updateBadge() {
   const n = shopping.filter(s=>!s.done).length;
   const b = document.getElementById('shopBadge');
   if(n>0){b.style.display='inline-block';b.textContent=n;}else b.style.display='none';
+}
+function updateTotal() {
+  let total = 0, count = 0;
+  document.querySelectorAll('.shop-item').forEach(el => {
+    const inp = el.querySelector('.price-input');
+    if (inp && inp.value) { total += parseFloat(inp.value)||0; count++; }
+  });
+  const ta = document.getElementById('totalAmount');
+  const ts = document.getElementById('totalSub');
+  if (ta) ta.textContent = '$' + total.toFixed(2);
+  if (ts) {
+    const checked = shopping.filter(s=>s.done).length;
+    ts.textContent = checked + ' item' + (checked===1?'':'s') + ' checked';
+  }
+}
+async function savePrice(id, value) {
+  const price = parseFloat(value)||0;
+  await setDoc(doc(db,'rooms',roomId,'shopping',id),{price},{merge:true}).catch(e=>console.log(e));
+  updateTotal();
 }
 
 /* ── モーダル ── */
@@ -606,7 +647,8 @@ Object.assign(window,{
   switchView,switchMealTab,openModal,addIngRow,saveDish,
   clearChecked,clearAll,toggleAdd,toggleOpen,editDish,deleteDish,toggleDone,
   openRoomSetup,closeRoomSetup,createRoom,joinRoom,
-  addSection,deleteSection,pickEmoji
+  addSection,deleteSection,pickEmoji,
+  savePrice,updateTotal
 });
 </script>
 </body>
